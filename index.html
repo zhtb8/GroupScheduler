@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Planner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2 {
+            color: #333;
+        }
+
+        input, button {
+            margin: 10px 0;
+            padding: 5px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #availability-dates {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .date-checkbox {
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>Event Planner</h1>
+        <div id="create-event">
+            <h2>Create Event</h2>
+            <input type="text" id="event-name" placeholder="Event Name">
+            <input type="text" id="host-name" placeholder="Host Name">
+            <input type="date" id="start-date">
+            <input type="date" id="end-date">
+            <button onclick="createEvent()">Create Event</button>
+        </div>
+        <div id="add-availability">
+            <h2>Add Availability</h2>
+            <input type="text" id="availability-event-name" placeholder="Event Name">
+            <input type="text" id="user-name" placeholder="Your Name">
+            <div id="availability-dates"></div>
+            <button onclick="addAvailability()">Submit Availability</button>
+        </div>
+        <div id="get-best-time">
+            <h2>Get Best Time</h2>
+            <input type="text" id="best-time-event-name" placeholder="Event Name">
+            <button onclick="getBestTime()">Find Best Time</button>
+            <p id="best-time-result"></p>
+        </div>
+    </div>
+
+    <script>
+        // In-memory storage (replace with a database in a real application)
+        const events = {};
+
+        class Event {
+            constructor(name, host, startDate, endDate) {
+                this.name = name;
+                this.host = host;
+                this.startDate = new Date(startDate);
+                this.endDate = new Date(endDate);
+                this.availabilities = {};
+            }
+
+            addAvailability(user, availability) {
+                this.availabilities[user] = availability;
+            }
+
+            findBestTime() {
+                const dateRange = (this.endDate - this.startDate) / (1000 * 60 * 60 * 24) + 1;
+                const scores = new Array(dateRange).fill(0);
+
+                for (const [user, availability] of Object.entries(this.availabilities)) {
+                    const weight = user === this.host ? 2 : 1;
+                    availability.forEach((available, i) => {
+                        if (available) {
+                            scores[i] += weight;
+                        }
+                    });
+                }
+
+                const bestDayIndex = scores.indexOf(Math.max(...scores));
+                const bestDate = new Date(this.startDate);
+                bestDate.setDate(bestDate.getDate() + bestDayIndex);
+                return bestDate.toISOString().split('T')[0];
+            }
+        }
+
+        function createEvent() {
+            const eventName = document.getElementById('event-name').value;
+            const hostName = document.getElementById('host-name').value;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+
+            events[eventName] = new Event(eventName, hostName, startDate, endDate);
+            alert('Event created successfully!');
+            updateAvailabilityDates(startDate, endDate);
+        }
+
+        function updateAvailabilityDates(startDate, endDate) {
+            const availabilityDates = document.getElementById('availability-dates');
+            availabilityDates.innerHTML = '';
+
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const dateRange = (end - start) / (1000 * 60 * 60 * 24) + 1;
+
+            for (let i = 0; i < dateRange; i++) {
+                const date = new Date(start);
+                date.setDate(date.getDate() + i);
+                const dateString = date.toISOString().split('T')[0];
+
+                const checkbox = document.createElement('div');
+                checkbox.classList.add('date-checkbox');
+                checkbox.innerHTML = `
+                    <input type="checkbox" id="date-${dateString}" name="date-${dateString}">
+                    <label for="date-${dateString}">${dateString}</label>
+                `;
+                availabilityDates.appendChild(checkbox);
+            }
+        }
+
+        function addAvailability() {
+            const eventName = document.getElementById('availability-event-name').value;
+            const userName = document.getElementById('user-name').value;
+            const availabilityDates = document.getElementById('availability-dates');
+            const checkboxes = availabilityDates.querySelectorAll('input[type="checkbox"]');
+
+            const availability = Array.from(checkboxes).map(checkbox => checkbox.checked);
+
+            if (events[eventName]) {
+                events[eventName].addAvailability(userName, availability);
+                alert('Availability added successfully!');
+            } else {
+                alert('Event not found!');
+            }
+        }
+
+        function getBestTime() {
+            const eventName = document.getElementById('best-time-event-name').value;
+
+            if (events[eventName]) {
+                const bestTime = events[eventName].findBestTime();
+                document.getElementById('best-time-result').textContent = `Best time for the event: ${bestTime}`;
+            } else {
+                alert('Event not found!');
+            }
+        }
+    </script>
+</body>
+</html>
